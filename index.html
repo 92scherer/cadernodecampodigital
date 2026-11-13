@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caderno de Campo Digital | Rastreabilidade Agrícola</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- QRCode.js via CDN para geração dinâmica de Etiquetas de Rastreabilidade -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Configuração personalizada do Tailwind para paleta Verde Oliva -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        olive: {
+                            50: '#f6f7f2',
+                            100: '#e9ecdf',
+                            200: '#d4dac0',
+                            300: '#b6c097',
+                            400: '#97a56f',
+                            500: '#7a8952',
+                            600: '#5f6c3f',
+                            700: '#4b5533',
+                            800: '#3b442b', // Fundo principal Verde Oliva
+                            900: '#2f3723',
+                            950: '#191e12',
+                        },
+                        sand: {
+                            50: '#fbfaf6',
+                            100: '#f5f3ea',
+                            200: '#eae5d3',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos de impressão para a Etiqueta de Rastreabilidade */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-label, #printable-label * {
+                visibility: visible;
+            }
+            #printable-label {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 420px;
+                margin: 0 auto;
+                padding: 20px;
+                border: 2px solid #000;
+                background: #fff !important;
+                color: #000 !important;
+                box-shadow: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* Scrollbar personalizada sutil */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2f3723;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #5f6c3f;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7a8952;
+        }
+    </style>
+</head>
+<body class="bg-olive-800 text-stone-800 font-sans min-h-screen flex flex-col selection:bg-olive-500 selection:text-white">
+
+    <!-- Toast / Notificação Flutuante (Substitui alert()) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Cabeçalho com Fundo Verde Oliva Escuro e Logo Centralizado -->
+    <header class="bg-olive-900/90 border-b border-olive-700/70 shadow-lg backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            
+            <!-- Barra Superior de Ferramentas de Dados (Backup / Exemplo) -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-olive-800 text-xs text-olive-200">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-olive-800 border border-olive-700 text-olive-100 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Armazenamento Local Ativo
+                    </span>
+                    <span id="last-saved-indicator" class="hidden sm:inline text-olive-300">Dados salvos automaticamente no navegador</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="loadDemoData()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-olive-800 hover:bg-olive-700 text-olive-100 border border-olive-600/50 transition cursor-pointer" title="Preencher com dados fictícios para teste">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-300"></i>
+                        <span>Dados de Exemplo</span>
+                    </button>
+                    <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-olive-800 hover:bg-olive-700 text-olive-100 border border-olive-600/50 transition cursor-pointer" title="Baixar planilha Excel/CSV">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-300"></i>
+                        <span>Excel (CSV)</span>
+                    </button>
+                    <button onclick="exportBackupJSON()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-olive-800 hover:bg-olive-700 text-olive-100 border border-olive-600/50 transition cursor-pointer" title="Fazer backup completo dos dados">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-sky-300"></i>
+                        <span>Backup</span>
+                    </button>
+                    <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-olive-800 hover:bg-olive-700 text-olive-100 border border-olive-600/50 transition cursor-pointer" title="Restaurar arquivo de backup JSON">
+                        <i data-lucide="upload" class="w-3.5 h-3.5 text-amber-300"></i>
+                        <span>Restaurar</span>
+                        <input type="file" id="import-json-input" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Logotipo Centralizado em Tamanho Médio/Grande -->
+            <div class="flex flex-col items-center justify-center text-center">
+                <div class="relative flex items-center justify-center mb-3">
+                    <!-- Imagem logo.png com fallback elegante automático caso o arquivo ainda não exista na pasta -->
+                    <img 
+                        id="brand-logo" 
+                        src="logo.png" 
+                        alt="Logo da Propriedade / Sistema" 
+                        class="h-24 md:h-28 w-auto max-w-[280px] object-contain mx-auto rounded-xl drop-shadow-md transition-transform duration-300 hover:scale-105"
+                        onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');"
+                    >
+                    <!-- Fallback caso logo.png não seja encontrado -->
+                    <div id="logo-fallback" class="hidden flex flex-col items-center justify-center bg-olive-800/90 border-2 border-olive-500/60 px-6 py-4 rounded-2xl shadow-inner">
+                        <div class="w-14 h-14 rounded-full bg-olive-600 flex items-center justify-center text-sand-50 mb-1 shadow">
+                            <i data-lucide="sprout" class="w-8 h-8"></i>
+                        </div>
+                        <span class="text-xs font-semibold tracking-widest uppercase text-olive-200">logo.png</span>
+                    </div>
+                </div>
+
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-sand-50 tracking-tight">
+                    Caderno de Campo Digital
+                </h1>
+                <p class="text-sm sm:text-base text-olive-200 mt-1 max-w-2xl">
+                    Controle de Plantio, Manejo Fitossanitário, Período de Carência e Rastreabilidade FLV
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+        <!-- Painel de Indicadores (KPIs) -->
+        <section aria-label="Resumo da Produção" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- KPI 1: Total de Lotes -->
+            <div class="bg-sand-50 rounded-2xl p-5 shadow-md border border-olive-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-olive-600">Lotes / Canteiros</p>
+                    <p id="kpi-total-lotes" class="text-3xl font-extrabold text-olive-900 mt-1">0</p>
+                    <p class="text-xs text-stone-500 mt-1">Cadastrados no sistema</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-olive-100 text-olive-700 flex items-center justify-center shrink-0">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- KPI 2: Em Carência (Bloqueados) -->
+            <div class="bg-sand-50 rounded-2xl p-5 shadow-md border border-amber-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-700">Em Carência</p>
+                    <p id="kpi-em-carencia" class="text-3xl font-extrabold text-amber-600 mt-1">0</p>
+                    <p class="text-xs text-stone-500 mt-1">Aguardando intervalo seguro</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- KPI 3: Liberados para Colheita -->
+            <div class="bg-sand-50 rounded-2xl p-5 shadow-md border border-emerald-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Liberados p/ Colheita</p>
+                    <p id="kpi-liberados" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+                    <p class="text-xs text-stone-500 mt-1">Carência cumprida / Aptos</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- KPI 4: Colheitas Realizadas -->
+            <div class="bg-sand-50 rounded-2xl p-5 shadow-md border border-olive-200/80 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-olive-600">Colheitas & Etiquetas</p>
+                    <p id="kpi-colheitas" class="text-3xl font-extrabold text-olive-900 mt-1">0</p>
+                    <p class="text-xs text-stone-500 mt-1">Lotes rastreados</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-olive-100 text-olive-700 flex items-center justify-center shrink-0">
+                    <i data-lucide="qr-code" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Barra de Ações Rápidas (Botões para abrir formulários) -->
+        <section class="bg-olive-900/60 border border-olive-700 rounded-2xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-md">
+            <div class="flex flex-wrap gap-2.5">
+                <button onclick="openModal('modal-lote')" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow transition cursor-pointer">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Novo Plantio / Lote</span>
+                </button>
+                <button onclick="openManejoModal()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm shadow transition cursor-pointer">
+                    <i data-lucide="spray-can" class="w-4 h-4"></i>
+                    <span>Registrar Manejo / Defensivo</span>
+                </button>
+                <button onclick="openColheitaModal()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-olive-600 hover:bg-olive-500 text-white font-semibold text-sm border border-olive-400/30 shadow transition cursor-pointer">
+                    <i data-lucide="shopping-basket" class="w-4 h-4"></i>
+                    <span>Registrar Colheita & QR Code</span>
+                </button>
+            </div>
+
+            <!-- Campo de Busca em Tempo Real -->
+            <div class="relative w-full md:w-80 lg:w-96">
+                <i data-lucide="search" class="w-4 h-4 text-olive-300 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    oninput="renderAll()"
+                    placeholder="Buscar lote, cultura, talhão, defensivo, cliente..." 
+                    class="w-full pl-10 pr-9 py-2.5 rounded-xl bg-olive-950/70 border border-olive-600 text-sand-50 placeholder-olive-300 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400"
+                >
+                <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-olive-300 hover:text-white cursor-pointer" title="Limpar busca">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Filtros de Status e Abas de Visualização -->
+        <section class="bg-sand-50 rounded-2xl shadow-xl border border-olive-200 overflow-hidden">
+            <!-- Cabeçalho do Card de Listagem -->
+            <div class="bg-sand-100 px-5 py-4 border-b border-olive-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="book-open-check" class="w-5 h-5 text-olive-700"></i>
+                    <h2 class="text-lg font-bold text-olive-900">Registros do Caderno de Campo</h2>
+                    <span id="filtered-count-badge" class="ml-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-olive-200 text-olive-800">0</span>
+                </div>
+
+                <!-- Filtros Rápidos por Status -->
+                <div class="flex flex-wrap gap-1.5" id="status-filters">
+                    <button onclick="setStatusFilter('TODOS')" data-filter="TODOS" class="filter-btn active px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-olive-800 text-white">
+                        Todos
+                    </button>
+                    <button onclick="setStatusFilter('CARENCIA')" data-filter="CARENCIA" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-white text-stone-700 border border-stone-200 hover:bg-amber-50">
+                        Em Carência
+                    </button>
+                    <button onclick="setStatusFilter('LIBERADO')" data-filter="LIBERADO" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-white text-stone-700 border border-stone-200 hover:bg-emerald-50">
+                        Liberados
+                    </button>
+                    <button onclick="setStatusFilter('COLHIDO')" data-filter="COLHIDO" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-white text-stone-700 border border-stone-200 hover:bg-olive-100">
+                        Com Colheita
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de Lotes / Cards Responsivos -->
+            <div id="lotes-list-container" class="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Preenchido dinamicamente via JS -->
+            </div>
+
+            <!-- Estado Vazio (Quando não há registros) -->
+            <div id="empty-state" class="hidden py-14 px-6 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-olive-100 text-olive-600 flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="sprout" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-lg font-bold text-olive-900">Nenhum lote encontrado</h3>
+                <p class="text-sm text-stone-500 max-w-md mx-auto mt-1">
+                    Comece cadastrando um novo plantio/canteiro acima ou ajuste os filtros da sua pesquisa.
+                </p>
+                <div class="mt-5 flex justify-center gap-3">
+                    <button onclick="openModal('modal-lote')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-olive-700 hover:bg-olive-800 text-white text-sm font-semibold transition cursor-pointer">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Cadastrar Primeiro Lote
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Rodapé Fixo com Assinatura Solicitada -->
+    <footer class="bg-olive-950 text-olive-200 border-t border-olive-800 py-6 mt-auto no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+            <div class="flex items-center gap-2 text-olive-300 text-xs">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                <span>Caderno de Campo Digital &bull; Rastreabilidade Agrícola Offline-First</span>
+            </div>
+            <div class="font-semibold tracking-wide text-sand-100 text-sm">
+                by wonderfull
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: CADASTRAR / EDITAR PLANTIO (LOTE / CANTEIRO)                 -->
+    <!-- ===================================================================== -->
+    <div id="modal-lote" class="fixed inset-0 z-40 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-sand-50 rounded-2xl max-w-xl w-full shadow-2xl border border-olive-200 overflow-hidden my-8">
+            <div class="bg-olive-800 text-sand-50 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="sprout" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 id="modal-lote-title" class="font-bold text-lg">Novo Plantio / Lote</h3>
+                </div>
+                <button onclick="closeModal('modal-lote')" class="text-olive-200 hover:text-white p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="form-lote" onsubmit="saveLote(event)" class="p-6 space-y-4">
+                <input type="hidden" id="lote-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Código do Lote *</label>
+                        <input type="text" id="lote-codigo" required placeholder="Ex: LOT-2026-001" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm font-semibold text-olive-900 focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Cultura / Produto *</label>
+                        <input type="text" id="lote-cultura" required placeholder="Ex: Tomate Cereja, Alface..." class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Variedade / Cultivar</label>
+                        <input type="text" id="lote-variedade" placeholder="Ex: Sweet Heaven, Crespa..." class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Talhão / Estufa / Canteiro *</label>
+                        <input type="text" id="lote-talhao" required placeholder="Ex: Estufa 02 - Canteiro B" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Área / Qtd. Mudas</label>
+                        <input type="text" id="lote-area" placeholder="Ex: 1.500 mudas / 0,5 ha" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Data de Plantio *</label>
+                        <input type="date" id="lote-data-plantio" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Previsão Colheita</label>
+                        <input type="date" id="lote-previsao-colheita" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Produtor / Propriedade de Origem</label>
+                    <input type="text" id="lote-produtor" placeholder="Ex: Sítio Boa Esperança - Gleba Norte" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Observações do Plantio</label>
+                    <textarea id="lote-obs" rows="2" placeholder="Origem das mudas, preparo de solo, adubação de base..." class="w-full px-3.5 py-2 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none"></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-stone-200 flex justify-end gap-2.5">
+                    <button type="button" onclick="closeModal('modal-lote')" class="px-4 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold text-sm transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-olive-700 hover:bg-olive-800 text-white font-semibold text-sm shadow transition cursor-pointer">
+                        Salvar Plantio
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 2: REGISTRAR MANEJO / DEFENSIVO / ADUBAÇÃO (CARÊNCIA)           -->
+    <!-- ===================================================================== -->
+    <div id="modal-manejo" class="fixed inset-0 z-40 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-sand-50 rounded-2xl max-w-xl w-full shadow-2xl border border-olive-200 overflow-hidden my-8">
+            <div class="bg-amber-700 text-white px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="spray-can" class="w-5 h-5 text-amber-200"></i>
+                    <h3 class="font-bold text-lg">Registrar Manejo / Aplicação</h3>
+                </div>
+                <button onclick="closeModal('modal-manejo')" class="text-amber-100 hover:text-white p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="form-manejo" onsubmit="saveManejo(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Selecione o Lote / Canteiro *</label>
+                    <select id="manejo-lote-id" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm font-semibold text-olive-900 focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                        <!-- Preenchido via JS -->
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Tipo de Operação *</label>
+                        <select id="manejo-tipo" required class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                            <option value="Defensivo Agrícola">Defensivo Agrícola (Químico)</option>
+                            <option value="Controle Biológico">Controle Biológico / Bioinsumo</option>
+                            <option value="Adubação / Fertirrigação">Adubação / Fertirrigação</option>
+                            <option value="Tratos Culturais / Poda">Tratos Culturais / Poda / Irrigação</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Produto / Insumo *</label>
+                        <input type="text" id="manejo-produto" required placeholder="Ex: Fungicida X, NPK 20-05-20..." class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Princípio Ativo / Alvo</label>
+                        <input type="text" id="manejo-principio" placeholder="Ex: Azoxistrobina / Míldio" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Dose Aplicada *</label>
+                        <input type="text" id="manejo-dose" required placeholder="Ex: 150 mL / 100L água" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-amber-50/90 p-3.5 rounded-xl border border-amber-200">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-amber-900 mb-1">Data da Aplicação *</label>
+                        <input type="date" id="manejo-data" required onchange="updateCarenciaPreview()" class="w-full px-3.5 py-2 rounded-xl bg-white border border-amber-300 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-amber-900 mb-1">Carência (Dias) *</label>
+                        <input type="number" id="manejo-carencia" min="0" max="365" value="0" required oninput="updateCarenciaPreview()" class="w-full px-3.5 py-2 rounded-xl bg-white border border-amber-300 text-sm font-bold text-amber-900 focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                    </div>
+                    <div class="sm:col-span-2 flex items-center justify-between text-xs pt-1 border-t border-amber-200/80">
+                        <span class="text-amber-800 font-medium">Previsão de Liberação para Colheita:</span>
+                        <span id="manejo-liberacao-preview" class="font-bold text-amber-950 bg-amber-200/70 px-2.5 py-1 rounded-md">--/--/----</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Aplicador / Observações</label>
+                    <input type="text" id="manejo-obs" placeholder="Nome do operador, condições climáticas..." class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none">
+                </div>
+
+                <div class="pt-3 border-t border-stone-200 flex justify-end gap-2.5">
+                    <button type="button" onclick="closeModal('modal-manejo')" class="px-4 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold text-sm transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm shadow transition cursor-pointer">
+                        Salvar Aplicação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 3: REGISTRAR COLHEITA                                           -->
+    <!-- ===================================================================== -->
+    <div id="modal-colheita" class="fixed inset-0 z-40 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-sand-50 rounded-2xl max-w-xl w-full shadow-2xl border border-olive-200 overflow-hidden my-8">
+            <div class="bg-olive-800 text-sand-50 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="shopping-basket" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 class="font-bold text-lg">Registrar Colheita & Lote Rastreável</h3>
+                </div>
+                <button onclick="closeModal('modal-colheita')" class="text-olive-200 hover:text-white p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="form-colheita" onsubmit="saveColheita(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Lote Colhido *</label>
+                    <select id="colheita-lote-id" required onchange="checkColheitaCarenciaWarning()" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm font-semibold text-olive-900 focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                        <!-- Preenchido via JS -->
+                    </select>
+                </div>
+
+                <!-- Alerta de Segurança se o lote estiver em carência -->
+                <div id="colheita-carencia-alert" class="hidden p-3.5 rounded-xl bg-red-50 border border-red-300 text-red-800 text-xs space-y-1">
+                    <div class="flex items-center gap-2 font-bold text-red-900 text-sm">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600 shrink-0"></i>
+                        <span>ATENÇÃO: Lote em Período de Carência!</span>
+                    </div>
+                    <p id="colheita-carencia-alert-text">Este lote recebeu defensivo recentemente e só estará liberado após a data de segurança.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Data da Colheita *</label>
+                        <input type="date" id="colheita-data" required onchange="checkColheitaCarenciaWarning()" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Quantidade Colhida *</label>
+                        <input type="text" id="colheita-qtd" required placeholder="Ex: 450 kg / 25 caixas" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Destino / Comprador *</label>
+                        <input type="text" id="colheita-destino" required placeholder="Ex: Rede Supermercados / CEASA" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Responsável pela Colheita</label>
+                        <input type="text" id="colheita-responsavel" placeholder="Nome do encarregado / agrônomo" class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-olive-800 mb-1">Observações / Padrão de Classificação</label>
+                    <input type="text" id="colheita-obs" placeholder="Ex: Tipo Extra A, higienizado, caixa plástica..." class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-stone-300 text-sm focus:ring-2 focus:ring-olive-600 focus:outline-none">
+                </div>
+
+                <div class="pt-3 border-t border-stone-200 flex justify-end gap-2.5">
+                    <button type="button" onclick="closeModal('modal-colheita')" class="px-4 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold text-sm transition cursor-pointer">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow transition cursor-pointer">
+                        Confirmar Colheita & Gerar QR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 4: DETALHES DO LOTE (LINHA DO TEMPO COMPLETA)                   -->
+    <!-- ===================================================================== -->
+    <div id="modal-detalhes" class="fixed inset-0 z-40 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-sand-50 rounded-2xl max-w-2xl w-full shadow-2xl border border-olive-200 overflow-hidden my-8">
+            <div class="bg-olive-800 text-sand-50 px-6 py-4 flex items-center justify-between">
+                <div>
+                    <span id="detalhe-codigo-badge" class="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-olive-700 text-olive-100">LOT-000</span>
+                    <h3 id="detalhe-titulo" class="font-bold text-xl mt-1">Detalhes do Lote</h3>
+                </div>
+                <button onclick="closeModal('modal-detalhes')" class="text-olive-200 hover:text-white p-1.5 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="detalhe-conteudo" class="p-6 max-h-[75vh] overflow-y-auto space-y-6">
+                <!-- Preenchido dinamicamente -->
+            </div>
+
+            <div class="bg-sand-100 px-6 py-3.5 border-t border-olive-200 flex flex-wrap items-center justify-between gap-2">
+                <button id="btn-detalhe-excluir" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold transition cursor-pointer">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    <span>Excluir Lote</span>
+                </button>
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-detalhe-qr" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-olive-700 hover:bg-olive-800 text-white text-xs font-bold transition cursor-pointer">
+                        <i data-lucide="qr-code" class="w-4 h-4"></i>
+                        <span>Etiqueta QR Code</span>
+                    </button>
+                    <button onclick="closeModal('modal-detalhes')" class="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold transition cursor-pointer">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 5: ETIQUETA DE RASTREABILIDADE (QR CODE PRONTO P/ IMPRESSÃO)    -->
+    <!-- ===================================================================== -->
+    <div id="modal-qrcode" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-stone-300 overflow-hidden my-8">
+            <div class="bg-olive-900 text-white px-5 py-3.5 flex items-center justify-between no-print">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="qr-code" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 class="font-bold text-base">Etiqueta de Rastreabilidade FLV</h3>
+                </div>
+                <button onclick="closeModal('modal-qrcode')" class="text-olive-200 hover:text-white p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Área Imprimível da Etiqueta -->
+            <div id="printable-label" class="p-6 bg-white text-stone-900 space-y-4">
+                <div class="border-2 border-stone-900 rounded-xl p-4 space-y-3">
+                    <!-- Cabeçalho da Etiqueta -->
+                    <div class="flex items-center justify-between border-b-2 border-stone-900 pb-2.5">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-stone-500">Rastreabilidade Vegetal</p>
+                            <h4 id="qr-cultura" class="text-lg font-extrabold text-stone-900 leading-tight">Tomate Cereja</h4>
+                            <p id="qr-variedade" class="text-xs text-stone-600">Variedade</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-bold uppercase block text-stone-500">Lote</span>
+                            <span id="qr-codigo" class="text-sm font-black px-2 py-0.5 bg-stone-900 text-white rounded">LOT-2026-001</span>
+                        </div>
+                    </div>
+
+                    <!-- Corpo com QR Code e Dados -->
+                    <div class="flex items-center gap-4 py-1">
+                        <div id="qrcode-canvas" class="p-2 bg-white border border-stone-300 rounded-lg shrink-0 flex items-center justify-center"></div>
+                        <div class="text-xs space-y-1.5 text-stone-800">
+                            <p><strong>Origem:</strong> <span id="qr-produtor">Propriedade</span></p>
+                            <p><strong>Local:</strong> <span id="qr-talhao">Estufa 01</span></p>
+                            <p><strong>Plantio:</strong> <span id="qr-plantio">01/01/2026</span></p>
+                            <p><strong>Colheita:</strong> <span id="qr-colheita">Aguardando</span></p>
+                            <p><strong>Status Carência:</strong> <span id="qr-carencia" class="font-bold">Liberado</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Rodapé da Etiqueta -->
+                    <div class="border-t border-dashed border-stone-400 pt-2 text-[11px] text-stone-600 flex items-center justify-between">
+                        <span>Aponte a câmera para auditar o histórico</span>
+                        <span class="font-bold text-stone-800">by wonderfull</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-stone-100 px-5 py-3.5 border-t border-stone-200 flex justify-end gap-2.5 no-print">
+                <button onclick="closeModal('modal-qrcode')" class="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-sm font-semibold transition cursor-pointer">
+                    Fechar
+                </button>
+                <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-olive-800 hover:bg-olive-900 text-white text-sm font-semibold shadow transition cursor-pointer">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Imprimir Etiqueta</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL DE CONFIRMAÇÃO CUSTOMIZADO (SUBSTITUI confirm())                -->
+    <!-- ===================================================================== -->
+    <div id="modal-confirm" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div class="flex items-center gap-3 text-red-600">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <h3 id="confirm-title" class="font-bold text-lg text-stone-900">Confirmar Exclusão</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-stone-600">Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal('modal-confirm')" class="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold cursor-pointer">
+                    Cancelar
+                </button>
+                <button id="confirm-yes-btn" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold cursor-pointer">
+                    Sim, Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT: LÓGICA DO SISTEMA, PERSISTÊNCIA E RASTREABILIDADE         -->
+    <!-- ===================================================================== -->
+    <script>
+        // Chave única no LocalStorage para garantir persistência total
+        const STORAGE_KEY = 'caderno_campo_wonderfull_v1';
+
+        // Estado global da aplicação
+        let appData = {
+            lotes: []
+        };
+
+        let currentStatusFilter = 'TODOS';
+
+        // Inicialização ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            renderAll();
+            lucide.createIcons();
+        });
+
+        // ---------------------------------------------------------------------
+        // 1. PERSISTÊNCIA LOCAL (LocalStorage) E BACKUP
+        // ---------------------------------------------------------------------
+        function loadFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.lotes)) {
+                        appData = parsed;
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao ler dados locais:', e);
+                showToast('Não foi possível ler os dados salvos anteriormente.', 'error');
+            }
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const indicator = document.getElementById('last-saved-indicator');
+                if (indicator) {
+                    indicator.textContent = `Salvo automaticamente às ${timeStr}`;
+                }
+            } catch (e) {
+                console.error('Erro ao salvar no LocalStorage:', e);
+                showToast('Erro ao salvar dados no navegador. Faça um backup JSON.', 'error');
+            }
+        }
+
+        // Exportar Backup Completo em JSON
+        function exportBackupJSON() {
+            if (appData.lotes.length === 0) {
+                showToast('Não há registros para exportar ainda.', 'warning');
+                return;
+            }
+            const dataStr = JSON.stringify(appData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateSlug = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `caderno-campo-backup-${dateSlug}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Backup JSON baixado com sucesso!', 'success');
+        }
+
+        // Restaurar Backup JSON
+        function importBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported && Array.isArray(imported.lotes)) {
+                        appData = imported;
+                        saveToStorage();
+                        renderAll();
+                        showToast(`Backup restaurado! ${appData.lotes.length} lote(s) carregado(s).`, 'success');
+                    } else {
+                        showToast('Arquivo JSON inválido para o Caderno de Campo.', 'error');
+                    }
+                } catch (err) {
+                    showToast('Erro ao ler o arquivo de backup.', 'error');
+                }
+                event.target.value = ''; // Limpa input
+            };
+            reader.readAsText(file);
+        }
+
+        // Exportar Relatório CSV (Compatível com Excel)
+        function exportCSV() {
+            if (appData.lotes.length === 0) {
+                showToast('Cadastre ao menos um lote para gerar o relatório CSV.', 'warning');
+                return;
+            }
+
+            const headers = [
+                'Codigo Lote',
+                'Cultura',
+                'Variedade',
+                'Talhao/Estufa',
+                'Area/Mudas',
+                'Data Plantio',
+                'Status Atual',
+                'Liberacao Carencia',
+                'Qtd Aplicacoes',
+                'Ultima Aplicacao',
+                'Qtd Colheitas',
+                'Total Colhido / Destinos'
+            ];
+
+            const rows = appData.lotes.map(lote => {
+                const statusInfo = getLoteStatus(lote);
+                const ultimaApp = lote.manejos && lote.manejos.length > 0
+                    ? `${lote.manejos[lote.manejos.length - 1].produto} (${formatDateBR(lote.manejos[lote.manejos.length - 1].data)})`
+                    : 'Nenhuma';
+                
+                const colheitasResumo = lote.colheitas && lote.colheitas.length > 0
+                    ? lote.colheitas.map(c => `${c.quantidade} -> ${c.destino} (${formatDateBR(c.data)})`).join(' | ')
+                    : 'Nenhuma';
+
+                return [
+                    lote.codigo,
+                    lote.cultura,
+                    lote.variedade || '',
+                    lote.talhao,
+                    lote.area || '',
+                    formatDateBR(lote.dataPlantio),
+                    statusInfo.label,
+                    statusInfo.dataLiberacao ? formatDateBR(statusInfo.dataLiberacao) : 'Livre',
+                    (lote.manejos || []).length,
+                    ultimaApp,
+                    (lote.colheitas || []).length,
+                    colheitasResumo
+                ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(';');
+            });
+
+            // BOM UTF-8 para acentuação correta no Excel
+            const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateSlug = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `relatorio-caderno-campo-${dateSlug}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Relatório CSV (Excel) exportado!', 'success');
+        }
+
+        // ---------------------------------------------------------------------
+        // 2. CÁLCULO DE CARÊNCIA E STATUS DO LOTE
+        // ---------------------------------------------------------------------
+        function addDaysToDateStr(dateStr, days) {
+            if (!dateStr) return null;
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            date.setDate(date.getDate() + Number(days || 0));
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function getTodayStr() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function formatDateBR(dateStr) {
+            if (!dateStr) return '--/--/----';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function getLoteStatus(lote) {
+            const today = getTodayStr();
+            let maxLiberacao = null;
+            let produtoBloqueante = null;
+
+            if (lote.manejos && lote.manejos.length > 0) {
+                lote.manejos.forEach(m => {
+                    const carenciaDias = Number(m.carencia || 0);
+                    if (carenciaDias > 0) {
+                        const libDate = addDaysToDateStr(m.data, carenciaDias);
+                        if (!maxLiberacao || libDate > maxLiberacao) {
+                            maxLiberacao = libDate;
+                            produtoBloqueante = m.produto;
+                        }
+                    }
+                });
+            }
+
+            const emCarencia = maxLiberacao && today < maxLiberacao;
+            const temColheita = lote.colheitas && lote.colheitas.length > 0;
+
+            if (emCarencia) {
+                return {
+                    code: 'CARENCIA',
+                    label: `Em Carência até ${formatDateBR(maxLiberacao)}`,
+                    shortLabel: 'Em Carência',
+                    dataLiberacao: maxLiberacao,
+                    produtoBloqueante,
+                    badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+                    icon: 'shield-alert'
+                };
+            }
+
+            if (temColheita) {
+                return {
+                    code: 'COLHIDO',
+                    label: 'Colhido & Rastreado',
+                    shortLabel: 'Colhido',
+                    dataLiberacao: maxLiberacao,
+                    badgeClass: 'bg-olive-200 text-olive-900 border-olive-400',
+                    icon: 'check-check'
+                };
+            }
+
+            return {
+                code: 'LIBERADO',
+                label: 'Liberado p/ Colheita',
+                shortLabel: 'Liberado',
+                dataLiberacao: maxLiberacao,
+                badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                icon: 'check-circle-2'
+            };
+        }
+
+        // ---------------------------------------------------------------------
+        // 3. MODAIS E FORMULÁRIOS (LOTE, MANEJO, COLHEITA)
+        // ---------------------------------------------------------------------
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+
+            if (modalId === 'modal-lote' && !document.getElementById('lote-id').value) {
+                // Prepara novo lote com código sequencial sugerido
+                document.getElementById('form-lote').reset();
+                document.getElementById('modal-lote-title').textContent = 'Novo Plantio / Lote';
+                const year = new Date().getFullYear();
+                const nextNum = String(appData.lotes.length + 1).padStart(3, '0');
+                document.getElementById('lote-codigo').value = `LOT-${year}-${nextNum}`;
+                document.getElementById('lote-data-plantio').value = getTodayStr();
+            }
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('hidden');
+            if (modalId === 'modal-lote') {
+                document.getElementById('lote-id').value = '';
+            }
+        }
+
+        // Salvar Plantio / Lote
+        function saveLote(event) {
+            event.preventDefault();
+            const id = document.getElementById('lote-id').value;
+            const codigo = document.getElementById('lote-codigo').value.trim();
+            const cultura = document.getElementById('lote-cultura').value.trim();
+            const variedade = document.getElementById('lote-variedade').value.trim();
+            const talhao = document.getElementById('lote-talhao').value.trim();
+            const area = document.getElementById('lote-area').value.trim();
+            const dataPlantio = document.getElementById('lote-data-plantio').value;
+            const previsaoColheita = document.getElementById('lote-previsao-colheita').value;
+            const produtor = document.getElementById('lote-produtor').value.trim();
+            const obs = document.getElementById('lote-obs').value.trim();
+
+            if (id) {
+                // Edição
+                const index = appData.lotes.findIndex(l => l.id === id);
+                if (index !== -1) {
+                    appData.lotes[index] = {
+                        ...appData.lotes[index],
+                        codigo, cultura, variedade, talhao, area, dataPlantio, previsaoColheita, produtor, obs
+                    };
+                    showToast(`Lote ${codigo} atualizado com sucesso!`, 'success');
+                }
+            } else {
+                // Novo cadastro
+                const novoLote = {
+                    id: 'lote_' + Date.now(),
+                    codigo,
+                    cultura,
+                    variedade,
+                    talhao,
+                    area,
+                    dataPlantio,
+                    previsaoColheita,
+                    produtor,
+                    obs,
+                    manejos: [],
+                    colheitas: [],
+                    criadoEm: new Date().toISOString()
+                };
+                appData.lotes.unshift(novoLote);
+                showToast(`Lote ${codigo} (${cultura}) cadastrado!`, 'success');
+            }
+
+            saveToStorage();
+            closeModal('modal-lote');
+            renderAll();
+        }
+
+        function editLote(loteId) {
+            const lote = appData.lotes.find(l => l.id === loteId);
+            if (!lote) return;
+
+            document.getElementById('lote-id').value = lote.id;
+            document.getElementById('lote-codigo').value = lote.codigo;
+            document.getElementById('lote-cultura').value = lote.cultura;
+            document.getElementById('lote-variedade').value = lote.variedade || '';
+            document.getElementById('lote-talhao').value = lote.talhao;
+            document.getElementById('lote-area').value = lote.area || '';
+            document.getElementById('lote-data-plantio').value = lote.dataPlantio;
+            document.getElementById('lote-previsao-colheita').value = lote.previsaoColheita || '';
+            document.getElementById('lote-produtor').value = lote.produtor || '';
+            document.getElementById('lote-obs').value = lote.obs || '';
+            document.getElementById('modal-lote-title').textContent = `Editar Lote ${lote.codigo}`;
+
+            closeModal('modal-detalhes');
+            openModal('modal-lote');
+        }
+
+        // Abrir Modal de Manejo / Defensivos
+        function openManejoModal(preselectedLoteId = null) {
+            if (appData.lotes.length === 0) {
+                showToast('Cadastre primeiro um Lote/Plantio antes de registrar um manejo.', 'warning');
+                openModal('modal-lote');
+                return;
+            }
+
+            const select = document.getElementById('manejo-lote-id');
+            select.innerHTML = appData.lotes.map(l => 
+                `<option value="${l.id}">${l.codigo} - ${l.cultura} (${l.talhao})</option>`
+            ).join('');
+
+            if (preselectedLoteId) {
+                select.value = preselectedLoteId;
+            }
+
+            document.getElementById('form-manejo').reset();
+            if (preselectedLoteId) select.value = preselectedLoteId;
+            document.getElementById('manejo-data').value = getTodayStr();
+            document.getElementById('manejo-carencia').value = 0;
+            updateCarenciaPreview();
+
+            openModal('modal-manejo');
+        }
+
+        function updateCarenciaPreview() {
+            const dataApp = document.getElementById('manejo-data').value;
+            const dias = Number(document.getElementById('manejo-carencia').value || 0);
+            const previewEl = document.getElementById('manejo-liberacao-preview');
+
+            if (!dataApp) {
+                previewEl.textContent = '--/--/----';
+                return;
+            }
+
+            if (dias === 0) {
+                previewEl.textContent = `${formatDateBR(dataApp)} (Sem carência / Livre imediato)`;
+            } else {
+                const libDate = addDaysToDateStr(dataApp, dias);
+                previewEl.textContent = `${formatDateBR(libDate)} (+${dias} dias)`;
+            }
+        }
+
+        function saveManejo(event) {
+            event.preventDefault();
+            const loteId = document.getElementById('manejo-lote-id').value;
+            const lote = appData.lotes.find(l => l.id === loteId);
+            if (!lote) return;
+
+            const novoManejo = {
+                id: 'man_' + Date.now(),
+                tipo: document.getElementById('manejo-tipo').value,
+                produto: document.getElementById('manejo-produto').value.trim(),
+                principio: document.getElementById('manejo-principio').value.trim(),
+                dose: document.getElementById('manejo-dose').value.trim(),
+                data: document.getElementById('manejo-data').value,
+                carencia: Number(document.getElementById('manejo-carencia').value || 0),
+                obs: document.getElementById('manejo-obs').value.trim()
+            };
+
+            if (!lote.manejos) lote.manejos = [];
+            lote.manejos.push(novoManejo);
+
+            saveToStorage();
+            closeModal('modal-manejo');
+            renderAll();
+
+            if (novoManejo.carencia > 0) {
+                const lib = formatDateBR(addDaysToDateStr(novoManejo.data, novoManejo.carencia));
+                showToast(`Aplicação salva! Lote em carência até ${lib}.`, 'warning');
+            } else {
+                showToast('Manejo registrado com sucesso!', 'success');
+            }
+        }
+
+        // Abrir Modal de Colheita
+        function openColheitaModal(preselectedLoteId = null) {
+            if (appData.lotes.length === 0) {
+                showToast('Cadastre primeiro um Lote/Plantio antes de registrar a colheita.', 'warning');
+                openModal('modal-lote');
+                return;
+            }
+
+            const select = document.getElementById('colheita-lote-id');
+            select.innerHTML = appData.lotes.map(l => 
+                `<option value="${l.id}">${l.codigo} - ${l.cultura} (${l.talhao})</option>`
+            ).join('');
+
+            document.getElementById('form-colheita').reset();
+            if (preselectedLoteId) select.value = preselectedLoteId;
+            document.getElementById('colheita-data').value = getTodayStr();
+
+            checkColheitaCarenciaWarning();
+            openModal('modal-colheita');
+        }
+
+        function checkColheitaCarenciaWarning() {
+            const loteId = document.getElementById('colheita-lote-id').value;
+            const dataColheita = document.getElementById('colheita-data').value || getTodayStr();
+            const lote = appData.lotes.find(l => l.id === loteId);
+            const alertBox = document.getElementById('colheita-carencia-alert');
+            const alertText = document.getElementById('colheita-carencia-alert-text');
+
+            if (!lote) {
+                alertBox.classList.add('hidden');
+                return;
+            }
+
+            const status = getLoteStatus(lote);
+            if (status.dataLiberacao && dataColheita < status.dataLiberacao) {
+                alertText.textContent = `O defensivo "${status.produtoBloqueante}" exige intervalo de segurança até ${formatDateBR(status.dataLiberacao)}. Colher antes dessa data viola a carência agronômica!`;
+                alertBox.classList.remove('hidden');
+            } else {
+                alertBox.classList.add('hidden');
+            }
+        }
+
+        function saveColheita(event) {
+            event.preventDefault();
+            const loteId = document.getElementById('colheita-lote-id').value;
+            const lote = appData.lotes.find(l => l.id === loteId);
+            if (!lote) return;
+
+            const novaColheita = {
+                id: 'col_' + Date.now(),
+                data: document.getElementById('colheita-data').value,
+                quantidade: document.getElementById('colheita-qtd').value.trim(),
+                destino: document.getElementById('colheita-destino').value.trim(),
+                responsavel: document.getElementById('colheita-responsavel').value.trim(),
+                obs: document.getElementById('colheita-obs').value.trim()
+            };
+
+            if (!lote.colheitas) lote.colheitas = [];
+            lote.colheitas.push(novaColheita);
+
+            saveToStorage();
+            closeModal('modal-colheita');
+            renderAll();
+            showToast('Colheita registrada! Gerando etiqueta QR Code...', 'success');
+
+            // Abre imediatamente a etiqueta de rastreabilidade
+            openQRCodeModal(lote.id);
+        }
+
+        // ---------------------------------------------------------------------
+        // 4. VISUALIZAÇÃO DE DETALHES E EXCLUSÃO
+        // ---------------------------------------------------------------------
+        function openDetalhesModal(loteId) {
+            const lote = appData.lotes.find(l => l.id === loteId);
+            if (!lote) return;
+
+            const status = getLoteStatus(lote);
+            document.getElementById('detalhe-codigo-badge').textContent = lote.codigo;
+            document.getElementById('detalhe-titulo').textContent = `${lote.cultura} ${lote.variedade ? '(' + lote.variedade + ')' : ''}`;
+
+            const manejosOrdenados = [...(lote.manejos || [])].sort((a, b) => b.data.localeCompare(a.data));
+            const colheitasOrdenadas = [...(lote.colheitas || [])].sort((a, b) => b.data.localeCompare(a.data));
+
+            const html = `
+                <!-- Resumo do Plantio -->
+                <div class="bg-white p-4 rounded-xl border border-stone-200 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${status.badgeClass}">
+                            <i data-lucide="${status.icon}" class="w-3.5 h-3.5"></i>
+                            ${status.label}
+                        </span>
+                        <button onclick="editLote('${lote.id}')" class="inline-flex items-center gap-1 text-xs font-semibold text-olive-700 hover:text-olive-900 cursor-pointer">
+                            <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar Dados do Lote
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                        <div>
+                            <span class="text-stone-400 block">Talhão / Estufa</span>
+                            <strong class="text-stone-800 text-sm">${lote.talhao}</strong>
+                        </div>
+                        <div>
+                            <span class="text-stone-400 block">Data de Plantio</span>
+                            <strong class="text-stone-800 text-sm">${formatDateBR(lote.dataPlantio)}</strong>
+                        </div>
+                        <div>
+                            <span class="text-stone-400 block">Área / Mudas</span>
+                            <strong class="text-stone-800 text-sm">${lote.area || 'Não informado'}</strong>
+                        </div>
+                        <div>
+                            <span class="text-stone-400 block">Previsão Colheita</span>
+                            <strong class="text-stone-800 text-sm">${formatDateBR(lote.previsaoColheita)}</strong>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-stone-400 block">Origem / Propriedade</span>
+                            <strong class="text-stone-800 text-sm">${lote.produtor || 'Não informado'}</strong>
+                        </div>
+                    </div>
+                    ${lote.obs ? `<p class="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-lg border border-stone-100"><strong>Obs:</strong> ${lote.obs}</p>` : ''}
+                </div>
+
+                <!-- Histórico de Manejos e Defensivos -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h4 class="font-bold text-sm text-olive-900 flex items-center gap-1.5">
+                            <i data-lucide="spray-can" class="w-4 h-4 text-amber-600"></i>
+                            Histórico de Manejos e Defensivos (${manejosOrdenados.length})
+                        </h4>
+                        <button onclick="closeModal('modal-detalhes'); openManejoModal('${lote.id}')" class="text-xs font-bold text-amber-700 hover:underline cursor-pointer">
+                            + Adicionar Manejo
+                        </button>
+                    </div>
+                    ${manejosOrdenados.length === 0 
+                        ? `<p class="text-xs text-stone-500 bg-white p-4 rounded-xl border border-dashed border-stone-300 text-center">Nenhuma aplicação ou manejo registrado para este lote.</p>`
+                        : `<div class="space-y-2.5">
+                            ${manejosOrdenados.map(m => {
+                                const libDate = m.carencia > 0 ? addDaysToDateStr(m.data, m.carencia) : null;
+                                return `
+                                <div class="bg-white p-3.5 rounded-xl border border-stone-200 flex items-start justify-between gap-3 text-xs">
+                                    <div class="space-y-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span class="font-bold text-stone-900 text-sm">${m.produto}</span>
+                                            <span class="px-2 py-0.5 rounded bg-stone-100 text-stone-600 font-medium">${m.tipo}</span>
+                                        </div>
+                                        <p class="text-stone-600">
+                                            <strong>Data:</strong> ${formatDateBR(m.data)} &bull; <strong>Dose:</strong> ${m.dose}
+                                            ${m.principio ? ` &bull; <strong>Ativo:</strong> ${m.principio}` : ''}
+                                        </p>
+                                        ${m.carencia > 0 
+                                            ? `<p class="text-amber-700 font-semibold">Carência: ${m.carencia} dia(s) &rarr; Liberação em ${formatDateBR(libDate)}</p>`
+                                            : `<p class="text-emerald-700 font-medium">Sem carência (0 dias)</p>`
+                                        }
+                                        ${m.obs ? `<p class="text-stone-500 italic">${m.obs}</p>` : ''}
+                                    </div>
+                                    <button onclick="confirmDeleteSubItem('${lote.id}', 'manejo', '${m.id}')" class="text-stone-400 hover:text-red-600 p-1 cursor-pointer" title="Excluir manejo">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>`;
+                            }).join('')}
+                        </div>`
+                    }
+                </div>
+
+                <!-- Histórico de Colheitas -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h4 class="font-bold text-sm text-olive-900 flex items-center gap-1.5">
+                            <i data-lucide="shopping-basket" class="w-4 h-4 text-emerald-600"></i>
+                            Colheitas Realizadas (${colheitasOrdenadas.length})
+                        </h4>
+                        <button onclick="closeModal('modal-detalhes'); openColheitaModal('${lote.id}')" class="text-xs font-bold text-emerald-700 hover:underline cursor-pointer">
+                            + Registrar Colheita
+                        </button>
+                    </div>
+                    ${colheitasOrdenadas.length === 0 
+                        ? `<p class="text-xs text-stone-500 bg-white p-4 rounded-xl border border-dashed border-stone-300 text-center">Nenhuma colheita registrada ainda.</p>`
+                        : `<div class="space-y-2.5">
+                            ${colheitasOrdenadas.map(c => `
+                                <div class="bg-white p-3.5 rounded-xl border border-emerald-200 flex items-start justify-between gap-3 text-xs">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-emerald-900 text-sm">${c.quantidade}</span>
+                                            <span class="text-stone-500">em ${formatDateBR(c.data)}</span>
+                                        </div>
+                                        <p class="text-stone-700"><strong>Destino / Cliente:</strong> ${c.destino}</p>
+                                        ${c.responsavel ? `<p class="text-stone-500"><strong>Responsável:</strong> ${c.responsavel}</p>` : ''}
+                                        ${c.obs ? `<p class="text-stone-500 italic">${c.obs}</p>` : ''}
+                                    </div>
+                                    <button onclick="confirmDeleteSubItem('${lote.id}', 'colheita', '${c.id}')" class="text-stone-400 hover:text-red-600 p-1 cursor-pointer" title="Excluir colheita">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>`
+                    }
+                </div>
+            `;
+
+            document.getElementById('detalhe-conteudo').innerHTML = html;
+
+            document.getElementById('btn-detalhe-qr').onclick = () => {
+                closeModal('modal-detalhes');
+                openQRCodeModal(lote.id);
+            };
+
+            document.getElementById('btn-detalhe-excluir').onclick = () => {
+                confirmDeleteLote(lote.id, lote.codigo);
+            };
+
+            openModal('modal-detalhes');
+        }
+
+        function confirmDeleteLote(loteId, codigo) {
+            document.getElementById('confirm-title').textContent = `Excluir Lote ${codigo}?`;
+            document.getElementById('confirm-message').textContent = 'Todos os manejos, aplicações e colheitas vinculados a este lote também serão removidos permanentemente.';
+            document.getElementById('confirm-yes-btn').onclick = () => {
+                appData.lotes = appData.lotes.filter(l => l.id !== loteId);
+                saveToStorage();
+                closeModal('modal-confirm');
+                closeModal('modal-detalhes');
+                renderAll();
+                showToast(`Lote ${codigo} excluído.`, 'info');
+            };
+            openModal('modal-confirm');
+        }
+
+        function confirmDeleteSubItem(loteId, type, itemId) {
+            document.getElementById('confirm-title').textContent = type === 'manejo' ? 'Excluir Aplicação?' : 'Excluir Colheita?';
+            document.getElementById('confirm-message').textContent = 'Deseja remover este registro do histórico do lote?';
+            document.getElementById('confirm-yes-btn').onclick = () => {
+                const lote = appData.lotes.find(l => l.id === loteId);
+                if (lote) {
+                    if (type === 'manejo') {
+                        lote.manejos = (lote.manejos || []).filter(m => m.id !== itemId);
+                    } else {
+                        lote.colheitas = (lote.colheitas || []).filter(c => c.id !== itemId);
+                    }
+                    saveToStorage();
+                    closeModal('modal-confirm');
+                    renderAll();
+                    openDetalhesModal(loteId);
+                    showToast('Registro removido.', 'info');
+                }
+            };
+            openModal('modal-confirm');
+        }
+
+        // ---------------------------------------------------------------------
+        // 5. GERAÇÃO DE ETIQUETA COM QR CODE DINÂMICO
+        // ---------------------------------------------------------------------
+        function openQRCodeModal(loteId) {
+            const lote = appData.lotes.find(l => l.id === loteId);
+            if (!lote) return;
+
+            const status = getLoteStatus(lote);
+            const ultimaColheita = lote.colheitas && lote.colheitas.length > 0
+                ? lote.colheitas[lote.colheitas.length - 1]
+                : null;
+
+            document.getElementById('qr-codigo').textContent = lote.codigo;
+            document.getElementById('qr-cultura').textContent = lote.cultura;
+            document.getElementById('qr-variedade').textContent = lote.variedade || 'Cultivar Padrão';
+            document.getElementById('qr-produtor').textContent = lote.produtor || 'Produtor Rural';
+            document.getElementById('qr-talhao').textContent = lote.talhao;
+            document.getElementById('qr-plantio').textContent = formatDateBR(lote.dataPlantio);
+            document.getElementById('qr-colheita').textContent = ultimaColheita 
+                ? `${formatDateBR(ultimaColheita.data)} (${ultimaColheita.quantidade})` 
+                : 'Em campo';
+            document.getElementById('qr-carencia').textContent = status.code === 'CARENCIA'
+                ? `Bloqueado até ${formatDateBR(status.dataLiberacao)}`
+                : 'Cumprida / Liberado';
+
+            // Texto codificado no QR Code (legível ao escanear com qualquer celular)
+            const qrPayload = [
+                `RASTREABILIDADE FLV - ${lote.codigo}`,
+                `Produto: ${lote.cultura} ${lote.variedade ? '(' + lote.variedade + ')' : ''}`,
+                `Origem: ${lote.produtor || 'Propriedade'} - ${lote.talhao}`,
+                `Plantio: ${formatDateBR(lote.dataPlantio)}`,
+                ultimaColheita ? `Colheita: ${formatDateBR(ultimaColheita.data)} | Destino: ${ultimaColheita.destino}` : `Status: ${status.label}`,
+                `Carencia: ${status.code === 'CARENCIA' ? 'Aguardar ' + formatDateBR(status.dataLiberacao) : 'OK / Liberado'}`
+            ].join('\n');
+
+            const qrContainer = document.getElementById('qrcode-canvas');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: qrPayload,
+                width: 115,
+                height: 115,
+                colorDark: '#191e12',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+
+            openModal('modal-qrcode');
+        }
+
+        // ---------------------------------------------------------------------
+        // 6. BUSCA, FILTROS E RENDERIZAÇÃO DA INTERFACE
+        // ---------------------------------------------------------------------
+        function setStatusFilter(filter) {
+            currentStatusFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.dataset.filter === filter) {
+                    btn.className = 'filter-btn active px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-olive-800 text-white shadow-xs';
+                } else {
+                    btn.className = 'filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-white text-stone-700 border border-stone-200 hover:bg-olive-100';
+                }
+            });
+            renderAll();
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            renderAll();
+        }
+
+        function renderAll() {
+            const searchInput = document.getElementById('search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            const query = (searchInput.value || '').trim().toLowerCase();
+
+            if (query.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            // Cálculo dos KPIs globais
+            let totalLotes = appData.lotes.length;
+            let countCarencia = 0;
+            let countLiberados = 0;
+            let countColheitas = 0;
+
+            appData.lotes.forEach(lote => {
+                const st = getLoteStatus(lote);
+                if (st.code === 'CARENCIA') countCarencia++;
+                else countLiberados++;
+
+                if (lote.colheitas && lote.colheitas.length > 0) {
+                    countColheitas += lote.colheitas.length;
+                }
+            });
+
+            document.getElementById('kpi-total-lotes').textContent = totalLotes;
+            document.getElementById('kpi-em-carencia').textContent = countCarencia;
+            document.getElementById('kpi-liberados').textContent = countLiberados;
+            document.getElementById('kpi-colheitas').textContent = countColheitas;
+
+            // Filtragem para busca futura
+            const filteredLotes = appData.lotes.filter(lote => {
+                const st = getLoteStatus(lote);
+
+                // Filtro de status
+                if (currentStatusFilter !== 'TODOS' && st.code !== currentStatusFilter) {
+                    return false;
+                }
+
+                // Filtro de texto (busca em todos os campos do lote, manejos e colheitas)
+                if (query) {
+                    const manejosText = (lote.manejos || []).map(m => `${m.produto} ${m.principio} ${m.tipo}`).join(' ');
+                    const colheitasText = (lote.colheitas || []).map(c => `${c.destino} ${c.responsavel}`).join(' ');
+                    const searchableBlob = `${lote.codigo} ${lote.cultura} ${lote.variedade} ${lote.talhao} ${lote.produtor} ${lote.obs} ${manejosText} ${colheitasText}`.toLowerCase();
+                    return searchableBlob.includes(query);
+                }
+
+                return true;
+            });
+
+            document.getElementById('filtered-count-badge').textContent = filteredLotes.length;
+
+            const container = document.getElementById('lotes-list-container');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filteredLotes.length === 0) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                lucide.createIcons();
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            container.innerHTML = filteredLotes.map(lote => {
+                const status = getLoteStatus(lote);
+                const qtdManejos = (lote.manejos || []).length;
+                const qtdColheitas = (lote.colheitas || []).length;
+                const ultimoManejo = qtdManejos > 0 ? lote.manejos[qtdManejos - 1] : null;
+
+                return `
+                <article class="bg-white rounded-2xl border border-olive-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between overflow-hidden">
+                    <div class="p-5 space-y-3.5">
+                        <!-- Topo do Card: Código + Badge Status -->
+                        <div class="flex items-start justify-between gap-2">
+                            <span class="px-2.5 py-1 rounded-lg bg-olive-800 text-sand-50 text-xs font-extrabold tracking-wide">
+                                ${lote.codigo}
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.badgeClass}">
+                                <i data-lucide="${status.icon}" class="w-3.5 h-3.5"></i>
+                                ${status.shortLabel}
+                            </span>
+                        </div>
+
+                        <!-- Título da Cultura e Local -->
+                        <div>
+                            <h3 class="text-lg font-extrabold text-olive-950 leading-snug">
+                                ${lote.cultura}
+                                ${lote.variedade ? `<span class="text-sm font-medium text-stone-500">(${lote.variedade})</span>` : ''}
+                            </h3>
+                            <p class="text-xs text-olive-700 font-medium flex items-center gap-1 mt-1">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 shrink-0"></i>
+                                ${lote.talhao}
+                            </p>
+                        </div>
+
+                        <!-- Datas e Carência -->
+                        <div class="bg-sand-50 rounded-xl p-3 border border-olive-100 text-xs space-y-1.5">
+                            <div class="flex justify-between">
+                                <span class="text-stone-500">Plantio:</span>
+                                <span class="font-semibold text-stone-800">${formatDateBR(lote.dataPlantio)}</span>
+                            </div>
+                            ${lote.previsaoColheita ? `
+                            <div class="flex justify-between">
+                                <span class="text-stone-500">Prev. Colheita:</span>
+                                <span class="font-semibold text-stone-800">${formatDateBR(lote.previsaoColheita)}</span>
+                            </div>` : ''}
+                            <div class="flex justify-between">
+                                <span class="text-stone-500">Último Manejo:</span>
+                                <span class="font-semibold text-stone-800 truncate max-w-[160px]">
+                                    ${ultimoManejo ? ultimoManejo.produto : 'Nenhum registro'}
+                                </span>
+                            </div>
+                            ${status.code === 'CARENCIA' ? `
+                            <div class="pt-1.5 border-t border-amber-200 text-amber-800 font-bold flex items-center justify-between">
+                                <span>Liberado após:</span>
+                                <span>${formatDateBR(status.dataLiberacao)}</span>
+                            </div>` : ''}
+                        </div>
+
+                        <!-- Contadores Rápidos -->
+                        <div class="flex items-center gap-3 text-xs text-stone-600 pt-1">
+                            <span class="inline-flex items-center gap-1 bg-stone-100 px-2.5 py-1 rounded-md font-medium">
+                                <i data-lucide="spray-can" class="w-3.5 h-3.5 text-amber-600"></i>
+                                ${qtdManejos} manejo(s)
+                            </span>
+                            <span class="inline-flex items-center gap-1 bg-stone-100 px-2.5 py-1 rounded-md font-medium">
+                                <i data-lucide="shopping-basket" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                ${qtdColheitas} colheita(s)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Rodapé de Ações do Card -->
+                    <div class="bg-sand-100/80 px-4 py-3 border-t border-olive-100 flex items-center justify-between gap-2">
+                        <button onclick="openDetalhesModal('${lote.id}')" class="inline-flex items-center gap-1.5 text-xs font-bold text-olive-800 hover:text-olive-950 py-1 px-2 rounded-lg hover:bg-olive-200/60 transition cursor-pointer">
+                            <i data-lucide="history" class="w-3.5 h-3.5"></i>
+                            <span>Ver Histórico</span>
+                        </button>
+
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="openManejoModal('${lote.id}')" class="p-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 transition cursor-pointer" title="Registrar Aplicação / Manejo">
+                                <i data-lucide="spray-can" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="openColheitaModal('${lote.id}')" class="p-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 transition cursor-pointer" title="Registrar Colheita">
+                                <i data-lucide="shopping-basket" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="openQRCodeModal('${lote.id}')" class="p-2 rounded-lg bg-olive-800 hover:bg-olive-900 text-white transition cursor-pointer" title="Gerar Etiqueta QR Code">
+                                <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </article>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // ---------------------------------------------------------------------
+        // 7. DADOS DE EXEMPLO (PARA TESTE RÁPIDO PELO USUÁRIO)
+        // ---------------------------------------------------------------------
+        function loadDemoData() {
+            const today = new Date();
+            const fmt = (offsetDays) => {
+                const d = new Date(today);
+                d.setDate(d.getDate() + offsetDays);
+                return d.toISOString().slice(0, 10);
+            };
+
+            const demoLotes = [
+                {
+                    id: 'lote_demo_1',
+                    codigo: 'LOT-2026-001',
+                    cultura: 'Tomate Cereja',
+                    variedade: 'Sweet Grape',
+                    talhao: 'Estufa 01 - Setor A',
+                    area: '2.000 mudas',
+                    dataPlantio: fmt(-55),
+                    previsaoColheita: fmt(2),
+                    produtor: 'Fazenda Santa Clara',
+                    obs: 'Irrigação por gotejamento automatizada.',
+                    manejos: [
+                        {
+                            id: 'man_demo_1',
+                            tipo: 'Adubação / Fertirrigação',
+                            produto: 'Cálcio + Boro Foliar',
+                            principio: 'Nutrição',
+                            dose: '200 mL / 100L',
+                            data: fmt(-20),
+                            carencia: 0,
+                            obs: 'Prevenção de fundo preto.'
+                        },
+                        {
+                            id: 'man_demo_2',
+                            tipo: 'Defensivo Agrícola',
+                            produto: 'Fungicida Protetor X',
+                            principio: 'Mancozebe',
+                            dose: '250 g / 100L',
+                            data: fmt(-2),
+                            carencia: 7,
+                            obs: 'Aplicação preventiva após chuva.'
+                        }
+                    ],
+                    colheitas: []
+                },
+                {
+                    id: 'lote_demo_2',
+                    codigo: 'LOT-2026-002',
+                    cultura: 'Alface Americana',
+                    variedade: 'Lucy Brown',
+                    talhao: 'Canteiro 04 - Campo Aberto',
+                    area: '5.000 plantas',
+                    dataPlantio: fmt(-38),
+                    previsaoColheita: fmt(0),
+                    produtor: 'Fazenda Santa Clara',
+                    obs: 'Mulching plástico branco.',
+                    manejos: [
+                        {
+                            id: 'man_demo_3',
+                            tipo: 'Controle Biológico',
+                            produto: 'Bacillus thuringiensis',
+                            principio: 'Controle de lagartas',
+                            dose: '100 g / 100L',
+                            data: fmt(-10),
+                            carencia: 0,
+                            obs: 'Aplicado no final da tarde.'
+                        }
+                    ],
+                    colheitas: [
+                        {
+                            id: 'col_demo_1',
+                            data: fmt(-1),
+                            quantidade: '120 caixas (180 kg)',
+                            destino: 'Supermercados Vale Verde',
+                            responsavel: 'João Silva (Eng. Agrônomo)',
+                            obs: 'Padrão Extra A higienizado.'
+                        }
+                    ]
+                },
+                {
+                    id: 'lote_demo_3',
+                    codigo: 'LOT-2026-003',
+                    cultura: 'Morango',
+                    variedade: 'San Andreas',
+                    talhao: 'Estufa Hidropônica 03',
+                    area: '3.200 mudas',
+                    dataPlantio: fmt(-70),
+                    previsaoColheita: fmt(0),
+                    produtor: 'Fazenda Santa Clara',
+                    obs: 'Cultivo semi-hidropônico em substrato.',
+                    manejos: [
+                        {
+                            id: 'man_demo_4',
+                            tipo: 'Defensivo Agrícola',
+                            produto: 'Acaricida Biológico Neem',
+                            principio: 'Azadiractina',
+                            dose: '300 mL / 100L',
+                            data: fmt(-12),
+                            carencia: 3,
+                            obs: 'Carência já cumprida com folga.'
+                        }
+                    ],
+                    colheitas: []
+                }
+            ];
+
+            appData.lotes = [...demoLotes, ...appData.lotes];
+            saveToStorage();
+            renderAll();
+            showToast('3 lotes de exemplo adicionados ao seu Caderno de Campo!', 'success');
+        }
+
+        // ---------------------------------------------------------------------
+        // 8. NOTIFICAÇÕES TOAST (SUBSTITUI alert())
+        // ---------------------------------------------------------------------
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-emerald-900 text-emerald-50 border-emerald-500',
+                warning: 'bg-amber-900 text-amber-50 border-amber-500',
+                error: 'bg-red-900 text-red-50 border-red-500',
+                info: 'bg-olive-950 text-sand-50 border-olive-500'
+            };
+
+            const icons = {
+                success: 'check-circle-2',
+                warning: 'alert-triangle',
+                error: 'x-circle',
+                info: 'info'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 shadow-xl text-xs sm:text-sm font-medium transition-all duration-300 ${styles[type] || styles.info}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || icons.info}" class="w-5 h-5 shrink-0"></i>
+                <span class="flex-grow">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
