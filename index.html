@@ -136,23 +136,23 @@
                 </div>
             </div>
 
-            <!-- Logotipo Centralizado em Tamanho Médio/Grande -->
+            <!-- Logotipo Centralizado em Tamanho Grande (Dobro do tamanho anterior) -->
             <div class="flex flex-col items-center justify-center text-center">
-                <div class="relative flex items-center justify-center mb-3">
+                <div class="relative flex items-center justify-center mb-4">
                     <!-- Imagem logo.png com fallback elegante automático caso o arquivo ainda não exista na pasta -->
                     <img 
                         id="brand-logo" 
                         src="logo.png" 
                         alt="Logo da Propriedade / Sistema" 
-                        class="h-24 md:h-28 w-auto max-w-[280px] object-contain mx-auto rounded-xl drop-shadow-md transition-transform duration-300 hover:scale-105"
+                        class="h-48 md:h-56 w-auto max-w-[90vw] sm:max-w-[560px] object-contain mx-auto rounded-2xl drop-shadow-lg transition-transform duration-300 hover:scale-105"
                         onerror="this.style.display='none'; document.getElementById('logo-fallback').classList.remove('hidden');"
                     >
-                    <!-- Fallback caso logo.png não seja encontrado -->
-                    <div id="logo-fallback" class="hidden flex flex-col items-center justify-center bg-olive-800/90 border-2 border-olive-500/60 px-6 py-4 rounded-2xl shadow-inner">
-                        <div class="w-14 h-14 rounded-full bg-olive-600 flex items-center justify-center text-sand-50 mb-1 shadow">
-                            <i data-lucide="sprout" class="w-8 h-8"></i>
+                    <!-- Fallback caso logo.png não seja encontrado (também ampliado proporcionalmente) -->
+                    <div id="logo-fallback" class="hidden flex flex-col items-center justify-center bg-olive-800/90 border-2 border-olive-500/60 px-12 py-8 rounded-3xl shadow-inner">
+                        <div class="w-24 h-24 rounded-full bg-olive-600 flex items-center justify-center text-sand-50 mb-3 shadow-md">
+                            <i data-lucide="sprout" class="w-14 h-14"></i>
                         </div>
-                        <span class="text-xs font-semibold tracking-widest uppercase text-olive-200">logo.png</span>
+                        <span class="text-sm font-semibold tracking-widest uppercase text-olive-200">logo.png</span>
                     </div>
                 </div>
 
